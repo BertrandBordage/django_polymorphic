@@ -13,8 +13,16 @@ from django.shortcuts import render_to_response
 from django.template.context import RequestContext
 from django.utils import six
 from django.utils.encoding import force_text
+from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
+try:
+    # Django 1.6 implements this
+    from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
+except ImportError:
+    def add_preserved_filters(context, form_url):
+        return form_url
+
 
 __all__ = (
     'PolymorphicModelChoiceForm', 'PolymorphicParentModelAdmin',
@@ -100,6 +108,10 @@ class PolymorphicParentModelAdmin(admin.ModelAdmin):
     add_type_template = None
     add_type_form = PolymorphicModelChoiceForm
 
+    #: The regular expression to filter the primary key in the URL.
+    #: This accepts only numbers as defensive measure against catch-all URLs.
+    #: If your primary key consists of string values, update this regular expression.
+    pk_regex = '(\d+)'
 
     def __init__(self, model, admin_site, *args, **kwargs):
         super(PolymorphicParentModelAdmin, self).__init__(model, admin_site, *args, **kwargs)
@@ -178,6 +190,12 @@ class PolymorphicParentModelAdmin(admin.ModelAdmin):
             return self.add_type_view(request)
         else:
             real_admin = self._get_real_admin_by_ct(ct_id)
+            # rebuild form_url, otherwise libraries below will override it.
+            form_url = add_preserved_filters({
+                'preserved_filters': urlencode({'ct_id': ct_id}),
+                'opts': self.model._meta},
+                form_url
+            )
             return real_admin.add_view(request, form_url, extra_context)
 
 
@@ -308,6 +326,11 @@ class PolymorphicChildModelAdmin(admin.ModelAdmin):
         # Instead, pass the form unchecked here, because the standard ModelForm will just work.
         # If the derived class sets the model explicitly, respect that setting.
         kwargs.setdefault('form', self.base_form or self.form)
+
+        # prevent infinite recursion in django 1.6+
+        if not self.declared_fieldsets:
+            kwargs.setdefault('fields', None)
+
         return super(PolymorphicChildModelAdmin, self).get_form(request, obj, **kwargs)
 
 

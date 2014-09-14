@@ -53,6 +53,12 @@ use the ``base_form`` and ``base_fieldsets`` instead. The ``PolymorphicChildMode
 automatically detect the additional fields that the child model has, display those in a separate fieldset.
 
 
+Polymorphic Inlines
+-------------------
+
+To add a polymorphic child model as an Inline for another model, add a field to the inline's readonly_fields list formed by the lowercased name of the polymorphic parent model with the string "_ptr" appended to it. Otherwise, trying to save that model in the admin will raise an AttributeError with the message "can't set attribute".
+
+
 .. _admin-example:
 
 Example
@@ -64,7 +70,7 @@ The models are taken from :ref:`advanced-features`.
 
     from django.contrib import admin
     from polymorphic.admin import PolymorphicParentModelAdmin, PolymorphicChildModelAdmin
-    from .models import ModelA, ModelB, ModelC
+    from .models import ModelA, ModelB, ModelC, StandardModel
 
     class ModelAParentAdmin(PolymorphicParentModelAdmin):
         """ The parent model admin """
@@ -83,12 +89,27 @@ The models are taken from :ref:`advanced-features`.
         )
         # Define other common features between the child model admins here
 
+
     class ModelBAdmin(ModelAChildAdmin):
         # Define custom features here
+
 
     class ModelCAdmin(ModelBAdmin):
         # Define custom features here
 
+
+    class ModelBInline(admin.StackedInline):
+        model = ModelB
+        fk_name = 'modelb'
+        readonly_fields = ['modela_ptr']
+    
+        
+    class StandardModelAdmin(admin.ModelAdmin):
+        inlines = [ModelBInline]
+        
+
+    # Only the parent needs to be registered:
     admin.site.register(ModelA, ModelAParentAdmin)
     admin.site.register(ModelB, ModelBAdmin)
     admin.site.register(ModelC, ModelCAdmin)
+    admin.site.register(StandardModel, StandardModelAdmin)

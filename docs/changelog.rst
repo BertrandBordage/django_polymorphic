@@ -38,10 +38,26 @@ If you already use the admin integration, you therefore have to:
 See :ref:`the admin example <admin-example>` for more details.
 
 
-Version 0.5.4 (in development)
-------------------------------
+Version 0.5.6 (2014-07-21)
+--------------------------
+
+* Added ``pk_regex`` to the ``PolymorphicParentModelAdmin`` to support non-integer primary keys.
+* Fixed passing ``?ct_id=`` to the add view for Django 1.6 (fixes compatibility with django-parler_).
+
+
+Version 0.5.5 (2014-04-29)
+--------------------------
+
+* Fixed ``get_real_instance_class()`` for proxy models (broke in 0.5.4).
+
+
+Version 0.5.4 (2014-04-09)
+--------------------------
 
 * Fix ``.non_polymorphic()`` to returns a clone of the queryset, instead of effecting the existing queryset.
+* Fix missing ``alters_data = True`` annotations on the overwritten ``save()`` methods.
+* Fix infinite recursion bug in the admin with Django 1.6+
+* Added detection of bad ``ContentType`` table data.
 
 
 Version 0.5.3 (2013-09-17)
@@ -126,3 +142,4 @@ It supports Django 1.1 up till 1.4 and Python 2.4 up till 2.7.
 For a detailed list of it's changes, see the :doc:`archived changelog <changelog_archive>`.
 
 .. _Grappelli: http://grappelliproject.com/
+.. _django-parler: https://github.com/edoburu/django-parler

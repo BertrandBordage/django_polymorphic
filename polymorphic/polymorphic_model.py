@@ -81,12 +81,14 @@ class PolymorphicModel(six.with_metaclass(PolymorphicModelBase, models.Model)):
         """
         if not self.polymorphic_ctype_id:
             self.polymorphic_ctype = ContentType.objects.get_for_model(self, for_concrete_model=False)
+    pre_save_polymorphic.alters_data = True
 
     def save(self, *args, **kwargs):
         """Overridden model save function which supports the polymorphism
         functionality (through pre_save_polymorphic)."""
         self.pre_save_polymorphic()
         return super(PolymorphicModel, self).save(*args, **kwargs)
+    save.alters_data = True
 
     def get_real_instance_class(self):
         """
@@ -97,14 +99,24 @@ class PolymorphicModel(six.with_metaclass(PolymorphicModelBase, models.Model)):
         """
         # the following line would be the easiest way to do this, but it produces sql queries
         # return self.polymorphic_ctype.model_class()
-        # so we use the following version, which uses the CopntentType manager cache.
+        # so we use the following version, which uses the ContentType manager cache.
         # Note that model_class() can return None for stale content types;
         # when the content type record still exists but no longer refers to an existing model.
         try:
-            return ContentType.objects.get_for_id(self.polymorphic_ctype_id).model_class()
+            model = ContentType.objects.get_for_id(self.polymorphic_ctype_id).model_class()
         except AttributeError:
             # Django <1.6 workaround
             return None
+
+        # Protect against bad imports (dumpdata without --natural) or other
+        # issues missing with the ContentType models.
+        if model is not None \
+        and not issubclass(model, self.__class__) \
+        and not issubclass(model, self.__class__._meta.proxy_for_model):
+            raise RuntimeError("ContentType {0} for {1} #{2} does not point to a subclass!".format(
+                self.polymorphic_ctype_id, model, self.pk,
+            ))
+        return model
 
     def get_real_concrete_instance_class_id(self):
         model_class = self.get_real_instance_class()
